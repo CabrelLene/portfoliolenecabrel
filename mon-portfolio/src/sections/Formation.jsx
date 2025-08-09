@@ -2,16 +2,21 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   Box, Heading, Text, SimpleGrid, HStack, VStack, Badge, Tag, TagLabel,
-  Accordion, AccordionItem, AccordionButton, AccordionPanel, AccordionIcon, Divider, Button
+  Accordion, AccordionItem, AccordionButton, AccordionPanel, AccordionIcon,
+  Divider, Button, List, ListItem, ListIcon, chakra
 } from "@chakra-ui/react";
 import { motion, useInView } from "framer-motion";
 import { formation } from "../data/formation";
-import { FaAndroid, FaApple, FaGlobe, FaCheckCircle } from "react-icons/fa";
+import {
+  FaAndroid, FaApple, FaGlobe, FaCheckCircle,
+  FaCertificate, FaUniversity, FaCalendarAlt
+} from "react-icons/fa";
 import "@lottiefiles/lottie-player";
 
 const MotionBox = motion(Box);
+const MotionVStack = motion(VStack);
 
-// ----- petit compteur animé quand l’élément entre dans le viewport
+/* ---------- Compteur animé ---------- */
 function Counter({ to = 0, suffix = "", duration = 800 }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "0px 0px -20% 0px" });
@@ -36,15 +41,15 @@ function Counter({ to = 0, suffix = "", duration = 800 }) {
   );
 }
 
-// ----- icône selon l’axe
+/* ---------- Icône d’axe ---------- */
 function AxisIcon({ name, size = 24 }) {
   if (name === "android") return <FaAndroid size={size} />;
-  if (name === "apple") return <FaApple size={size} />;
+  if (name === "apple")   return <FaApple size={size} />;
   return <FaGlobe size={size} />;
 }
 
-// ----- carte “axe” avec tilt léger
-function AxisCard({ axe, idx }) {
+/* ---------- Carte d’axe ---------- */
+function AxisCard({ axe }) {
   return (
     <MotionBox
       role="article"
@@ -71,12 +76,59 @@ function AxisCard({ axe, idx }) {
   );
 }
 
+/* ---------- Nouvelles formations (ajout sans doublon) ---------- */
+const certifs = [
+  {
+    title: "Certificat professionnel en soutien des TI de Google",
+    org: "NPower Canada • Montréal",
+    period: "Nov. 2023 – Fév. 2023",
+    bullets: [
+      "Formation intensive (fondamentaux IT + bases gestion de projet).",
+      "Windows & Linux : configuration, partitions disque & systèmes de fichiers.",
+      "Support orienté service : diagnostic, documentation, scripting.",
+      "Réseaux: notions DNS/DHCP/TCP-IP.",
+      "Services d’annuaire (Active Directory, OpenLDAP).",
+      "Fondements Agile : Scrum & Kanban."
+    ]
+  }
+];
+
+const diplomes = [
+  {
+    title: "Licence en Informatique",
+    org: "Université de Yaoundé 1 • Yaoundé",
+    period: "2020",
+    note: "Évaluation comparative MIFI (Baccalauréat — Sciences de l’informatique)."
+  },
+  {
+    title: "Master 1 — Informatique (Sécurité des Systèmes d’Informations)",
+    org: "Université de Yaoundé 1 • Yaoundé",
+    period: "2022"
+  },
+  {
+    title: "Master 2 (partiel) — Informatique (Sécurité des Systèmes d’Informations)",
+    org: "Université de Yaoundé 1 • Yaoundé",
+    period: "2022 — en cours"
+  }
+];
+
+/* ---------- Puce de timeline ---------- */
+const Dot = (props) => (
+  <Box
+    w="10px" h="10px" borderRadius="full"
+    bgGradient="linear(to-r, teal.300, purple.400)"
+    boxShadow="0 0 0 4px rgba(255,255,255,0.06)"
+    flexShrink={0}
+    {...props}
+  />
+);
+
 export default function Formation() {
   const { resume, axes, objectifs, technos, blocs } = formation;
 
   return (
     <Box as="main" px={{ base: 5, md: 8 }} py={{ base: 10, md: 16 }} position="relative" overflow="hidden">
-      {/* bandeau discret */}
+      {/* Fond doux */}
       <MotionBox
         position="absolute"
         inset={0}
@@ -86,7 +138,7 @@ export default function Formation() {
         animate={{ opacity: 1 }}
       />
 
-      {/* HERO résumé + Lottie + compteurs */}
+      {/* ===== HERO AEC (conservé) ===== */}
       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={10} alignItems="center" mb={12}>
         <Box>
           <Badge colorScheme="purple" mb={3}>Formation</Badge>
@@ -136,13 +188,13 @@ export default function Formation() {
         </Box>
       </SimpleGrid>
 
-      {/* Axes du programme */}
+      {/* Axes AEC (conservés) */}
       <Heading as="h2" size="lg" mb={4}>Axes du programme</Heading>
       <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={10}>
-        {axes.map((axe, i) => <AxisCard key={axe.key} axe={axe} idx={i} />)}
+        {axes.map((axe) => <AxisCard key={axe.key} axe={axe} />)}
       </SimpleGrid>
 
-      {/* Objectifs officiels */}
+      {/* Objectifs AEC (conservés) */}
       <Heading as="h2" size="lg" mb={3}>Objectifs & compétences</Heading>
       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3} mb={10}>
         {objectifs.map((o, i) => (
@@ -165,7 +217,7 @@ export default function Formation() {
         ))}
       </SimpleGrid>
 
-      {/* Focus Projet intégrateur + Stage */}
+      {/* Projet intégrateur + Stage (conservés) */}
       <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={12}>
         <MotionBox
           p={6}
@@ -175,9 +227,7 @@ export default function Formation() {
           whileHover={{ y: -4 }}
         >
           <Heading as="h3" size="md" mb={2}>Projet intégrateur (équipe)</Heading>
-          <Text>
-            90 heures sur un projet significatif (ex. app de partage de dépenses). Collaboration, qualité et livraison. 
-          </Text>
+          <Text>90 heures sur un projet significatif. Collaboration, qualité et livraison.</Text>
         </MotionBox>
 
         <MotionBox
@@ -188,13 +238,11 @@ export default function Formation() {
           whileHover={{ y: -4 }}
         >
           <Heading as="h3" size="md" mb={2}>Stage en entreprise</Heading>
-          <Text>
-            6 semaines pour mettre en pratique les acquis : participation à la conception, dev & déploiement d’une application réelle.
-          </Text>
+          <Text>6 semaines pour mettre en pratique : conception, dev & déploiement d’une application réelle.</Text>
         </MotionBox>
       </SimpleGrid>
 
-      {/* Grille des cours (par blocs) */}
+      {/* Grille des cours AEC (conservée) */}
       <Heading as="h2" size="lg" mb={3}>Grille de cours</Heading>
       <Accordion allowMultiple mb={8}>
         {blocs.map((b) => (
@@ -230,7 +278,88 @@ export default function Formation() {
         ))}
       </Accordion>
 
-      <HStack spacing={4}>
+      {/* ===== AJOUT : Certifications (nouveau) ===== */}
+      <Heading as="h2" size="lg" mb={4} display="flex" alignItems="center" gap={3}>
+        <FaCertificate /> Certifications
+      </Heading>
+      <MotionVStack
+        spacing={5} align="stretch" mb={10}
+        initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
+        viewport={{ once: true, amount: 0.25 }}
+      >
+        {certifs.map((c, idx) => (
+          <MotionBox
+            key={idx}
+            p={5}
+            border="1px solid"
+            borderColor="whiteAlpha.200"
+            rounded="lg"
+            bg="blackAlpha.400"
+            backdropFilter="blur(6px)"
+            whileHover={{ y: -2 }}
+          >
+            <HStack align="start" spacing={4}>
+              <Dot mt="10px" />
+              <Box flex="1">
+                <HStack justify="space-between" align="start" wrap="wrap">
+                  <Heading as="h3" size="md">{c.title}</Heading>
+                  <Badge colorScheme="teal" variant="subtle">{c.period}</Badge>
+                </HStack>
+                <Text mt={1} fontWeight="medium" color="teal.200">{c.org}</Text>
+                <List mt={3} spacing={2}>
+                  {c.bullets.map((b, i) => (
+                    <ListItem key={i}>
+                      <ListIcon as={FaCheckCircle} color="teal.300" />
+                      {b}
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            </HStack>
+          </MotionBox>
+        ))}
+      </MotionVStack>
+
+      {/* ===== AJOUT : Diplômes (nouveau) ===== */}
+      <Heading as="h2" size="lg" mb={4} display="flex" alignItems="center" gap={3}>
+        <FaUniversity /> Diplômes
+      </Heading>
+      <MotionVStack
+        spacing={5} align="stretch"
+        initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
+        viewport={{ once: true, amount: 0.25 }}
+      >
+        {diplomes.map((d, idx) => (
+          <MotionBox
+            key={idx}
+            p={5}
+            border="1px solid"
+            borderColor="whiteAlpha.200"
+            rounded="lg"
+            bg="blackAlpha.400"
+            backdropFilter="blur(6px)"
+            whileHover={{ y: -2 }}
+          >
+            <HStack align="start" spacing={4}>
+              <Dot mt="10px" />
+              <Box flex="1">
+                <HStack justify="space-between" align="start" wrap="wrap">
+                  <Heading as="h3" size="md">{d.title}</Heading>
+                  <HStack color="purple.200" fontWeight="medium">
+                    <FaCalendarAlt />
+                    <Text>{d.period}</Text>
+                  </HStack>
+                </HStack>
+                <Text mt={1} fontWeight="medium" color="purple.200">{d.org}</Text>
+                {d.note && <Text mt={2} fontSize="sm" color="whiteAlpha.800">{d.note}</Text>}
+              </Box>
+            </HStack>
+          </MotionBox>
+        ))}
+      </MotionVStack>
+
+      {/* CTA */}
+      <HStack spacing={4} mt={10}>
         <Button as="a" href="/projects" colorScheme="teal">Voir mes projets</Button>
         <Button as="a" href="/contact" variant="outline">Me contacter</Button>
       </HStack>
