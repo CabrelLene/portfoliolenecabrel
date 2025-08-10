@@ -1,9 +1,7 @@
-# netlify.toml
 [build]
   command = "npm run build"
   publish = "dist"
 
-# SPA fallback => toutes les routes reviennent à index.html (offline compris)
 [[redirects]]
   from = "/*"
   to = "/index.html"
