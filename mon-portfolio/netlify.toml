@@ -1,9 +1,7 @@
-# netlify.toml (à la racine)
 [build]
   command = "npm run build"
   publish = "dist"
 
-# Réécriture SPA : toutes les routes → index.html, status 200
 [[redirects]]
   from = "/*"
   to = "/index.html"
