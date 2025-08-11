@@ -1,7 +1,7 @@
 // src/pages/Home.jsx
-import React, { useEffect, useState, useRef } from 'react'
-import { Box, Heading, Text, Button, HStack, Tag } from '@chakra-ui/react'
-import { motion, useMotionValue, useTransform, useScroll } from 'framer-motion'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
+import { Box, Heading, Text, Button, HStack, Tag, useBreakpointValue } from '@chakra-ui/react'
+import { motion, useMotionValue, useTransform, useScroll, useReducedMotion } from 'framer-motion'
 import { keyframes, Global } from '@emotion/react'
 import { FaArrowRight, FaChevronDown } from 'react-icons/fa'
 import '@lottiefiles/lottie-player'
@@ -24,8 +24,9 @@ const gridPan = keyframes`
   0% { background-position: 0 0, 0 0; }
   100% { background-position: 200px 0, 0 200px; }
 `
+const beamsRotate = keyframes`from{transform:rotate(0)}to{transform:rotate(360deg)}`
 
-/* ---------- Typewriter minimal (sans lib) ---------- */
+/* ---------- Typewriter minimal ---------- */
 function Typewriter({ words = [], typingSpeed = 95, holdTime = 1200, loop = true }) {
   const [text, setText] = useState('')
   const [i, setI] = useState(0)
@@ -39,10 +40,7 @@ function Typewriter({ words = [], typingSpeed = 95, holdTime = 1200, loop = true
       if (text === current) t = setTimeout(() => setDel(true), holdTime)
     } else {
       t = setTimeout(() => setText(current.slice(0, text.length - 1)), typingSpeed / 2)
-      if (text === '') {
-        setDel(false); setI(v => v + 1)
-        if (!loop && i + 1 >= words.length) clearTimeout(t)
-      }
+      if (text === '') { setDel(false); setI(v => v + 1); if (!loop && i + 1 >= words.length) clearTimeout(t) }
     }
     return () => clearTimeout(t)
   }, [text, del, i, words, typingSpeed, holdTime, loop])
@@ -84,12 +82,188 @@ const IconFlutter = () => (
   </SvgWrap>
 )
 
+/* ---------- Starfield Canvas ---------- */
+function Starfield({ density = 1 }) {
+  const prefersReducedMotion = useReducedMotion()
+  const canvasRef = useRef(null)
+  const isMobile = useBreakpointValue({ base: true, md: false })
+
+  useEffect(() => {
+    if (prefersReducedMotion) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d', { alpha: true })
+    let w = canvas.width = canvas.offsetWidth
+    let h = canvas.height = canvas.offsetHeight
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    canvas.width = w * dpr
+    canvas.height = h * dpr
+    ctx.scale(dpr, dpr)
+
+    const count = Math.floor((w * h) / (isMobile ? 18000 : 10000) * density)
+    const stars = Array.from({ length: count }).map(() => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      z: Math.random() * 0.7 + 0.3,
+      a: Math.random() * 0.9 + 0.1
+    }))
+
+    let raf = 0
+    const loop = () => {
+      ctx.clearRect(0, 0, w, h)
+      for (let s of stars) {
+        s.y += (0.2 + s.z * 0.8)
+        if (s.y > h) { s.y = -2; s.x = Math.random() * w }
+        const size = s.z * 1.6
+        ctx.fillStyle = `rgba(${Math.floor(120 + 80*s.z)}, ${Math.floor(220)}, ${Math.floor(255)}, ${0.35 * s.a})`
+        ctx.fillRect(s.x, s.y, size, size)
+      }
+      raf = requestAnimationFrame(loop)
+    }
+    loop()
+
+    const onResize = () => {
+      w = canvas.width = canvas.offsetWidth
+      h = canvas.height = canvas.offsetHeight
+      canvas.width = w * dpr
+      canvas.height = h * dpr
+      ctx.scale(dpr, dpr)
+    }
+    const ro = new ResizeObserver(onResize)
+    ro.observe(canvas)
+
+    return () => { cancelAnimationFrame(raf); ro.disconnect() }
+  }, [density, prefersReducedMotion, isMobile])
+
+  return (
+    <Box
+      as="canvas"
+      ref={canvasRef}
+      position="absolute"
+      inset={0}
+      zIndex={0}
+      opacity={0.6}
+      pointerEvents="none"
+    />
+  )
+}
+
+/* ---------- Neon Beams ---------- */
+function NeonBeams() {
+  return (
+    <Box
+      position="absolute"
+      inset={0}
+      pointerEvents="none"
+      zIndex={0}
+      sx={{
+        maskImage: 'radial-gradient(circle at 50% 45%, rgba(0,0,0,1) 35%, rgba(0,0,0,0.2) 55%, transparent 75%)',
+        WebkitMaskImage: 'radial-gradient(circle at 50% 45%, rgba(0,0,0,1) 35%, rgba(0,0,0,0.2) 55%, transparent 75%)'
+      }}
+    >
+      <Box
+        position="absolute"
+        inset="-30%"
+        bg="conic-gradient(from 0deg, rgba(0,255,255,.10), rgba(233,30,99,.10), rgba(124,77,255,.10), rgba(0,255,255,.10))"
+        filter="blur(24px)"
+        animation={`${beamsRotate} 36s linear infinite`}
+      />
+    </Box>
+  )
+}
+
+/* ---------- Cadre holographique ---------- */
+function HoloFrame() {
+  return (
+    <Box position="absolute" inset={{ base: 6, md: 10 }} zIndex={1} pointerEvents="none">
+      <Box
+        position="absolute" inset={0} borderRadius="24px"
+        border="1px solid rgba(255,255,255,0.12)"
+        boxShadow="inset 0 0 0 1px rgba(255,255,255,0.06)"
+        _before={{
+          content:'""',
+          position:'absolute', inset:0, borderRadius:'24px',
+          background:'linear-gradient(90deg, rgba(0,255,255,.25), rgba(233,30,99,.25), rgba(124,77,255,.25))',
+          maskImage:'linear-gradient(#000 0 0), radial-gradient(32px 32px at 0 0, transparent 98%, #000 100%), radial-gradient(32px 32px at 100% 0, transparent 98%, #000 100%), radial-gradient(32px 32px at 100% 100%, transparent 98%, #000 100%), radial-gradient(32px 32px at 0 100%, transparent 98%, #000 100%)',
+          WebkitMaskComposite:'destination-out',
+          maskComposite:'exclude',
+          opacity:.3
+        }}
+      />
+    </Box>
+  )
+}
+
+/* ---------- Callout Card 3D ---------- */
+function CalloutCard({ title, desc, accent = '#00ffff', icon }) {
+  const isMobile = useBreakpointValue({ base: true, md: false })
+  const prefersReducedMotion = useReducedMotion()
+
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  const rotateX = useTransform(y, [-40, 40], [10, -10])
+  const rotateY = useTransform(x, [-40, 40], [-10, 10])
+
+  const onMove = (e) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    const dx = e.clientX - (r.left + r.width / 2)
+    const dy = e.clientY - (r.top + r.height / 2)
+    x.set(Math.max(-40, Math.min(40, dx / 4)))
+    y.set(Math.max(-40, Math.min(40, dy / 4)))
+    // Met à jour le halo
+    e.currentTarget.style.setProperty('--mx', `${e.clientX - r.left}px`)
+    e.currentTarget.style.setProperty('--my', `${e.clientY - r.top}px`)
+  }
+  const onLeave = () => { x.set(0); y.set(0) }
+
+  return (
+    <MotionBox
+      role="article"
+      whileHover={!isMobile && !prefersReducedMotion ? { scale: 1.03 } : {}}
+      whileTap={{ scale: 0.98 }}
+      style={!isMobile && !prefersReducedMotion ? { rotateX, rotateY, transformStyle:'preserve-3d' } : {}}
+      onMouseMove={!isMobile ? onMove : undefined}
+      onMouseLeave={!isMobile ? onLeave : undefined}
+      bg="rgba(255,255,255,0.05)"
+      border="1px solid rgba(255,255,255,0.15)"
+      borderRadius="20px"
+      p={{ base: 5, md: 6 }}
+      minH={{ base: 'auto', md: '220px' }}
+      position="relative"
+      overflow="hidden"
+      _before={{
+        content:'""', position:'absolute', inset:0, pointerEvents:'none',
+        background:`radial-gradient(220px 220px at var(--mx,50%) var(--my,50%), ${accent}22, transparent 60%)`,
+        transition:'background .15s'
+      }}
+      _after={{
+        content:'""', position:'absolute', inset:-1, borderRadius:'20px',
+        background:`linear-gradient(135deg, ${accent}66, transparent 50%, #e91e6355)`,
+        mask:'linear-gradient(#000,#000) content-box, linear-gradient(#000,#000)',
+        WebkitMaskComposite:'xor',
+        maskComposite:'exclude',
+        padding:'1px',
+        pointerEvents:'none',
+        opacity:0.8
+      }}
+    >
+      <Box mb={4} fontSize="2xl">{icon}</Box>
+      <Heading as="h3" size="md" mb={2}>{title}</Heading>
+      <Text color="whiteAlpha.800">{desc}</Text>
+    </MotionBox>
+  )
+}
+
+/* ===================== PAGE ===================== */
 export default function Home() {
+  const prefersReducedMotion = useReducedMotion()
+  const isMobile = useBreakpointValue({ base: true, md: false })
+
   /* Progress global pour la barre top */
   const { scrollYProgress } = useScroll()
   const scaleX = useTransform(scrollYProgress, [0, 1], [0, 1])
 
-  /* Parallax tilt du hero */
+  /* Parallax tilt du hero (desktop only) */
   const mx = useMotionValue(0), my = useMotionValue(0)
   const rotateX = useTransform(my, [-0.5, 0.5], [8, -8])
   const rotateY = useTransform(mx, [-0.5, 0.5], [-8, 8])
@@ -99,7 +273,7 @@ export default function Home() {
     my.set((e.clientY - r.top) / r.height - 0.5)
   }
 
-  /* Effet magnétique sur le CTA */
+  /* Effet magnétique sur le CTA (desktop only) */
   const bx = useMotionValue(0), by = useMotionValue(0)
   const onBtnMove = e => {
     const r = e.currentTarget.getBoundingClientRect()
@@ -108,13 +282,13 @@ export default function Home() {
   }
   const onBtnLeave = () => { bx.set(0); by.set(0) }
 
-  /* Réfs sections + TOC actif (2 sections) */
+  /* Réfs sections + TOC actif */
   const heroRef = useRef(null)
+  const calloutsRef = useRef(null)   // NEW
   const skillsRef = useRef(null)
   const [active, setActive] = useState(0)
-
   useEffect(() => {
-    const sections = [heroRef, skillsRef]
+    const sections = [heroRef, skillsRef] // TOC reste Hero/Skills (Callouts non listée)
     let raf = 0
     const onScroll = () => {
       cancelAnimationFrame(raf)
@@ -133,15 +307,14 @@ export default function Home() {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => { cancelAnimationFrame(raf); window.removeEventListener('scroll', onScroll) }
   }, [])
-
-  const colorBySection = ['#00ffff', '#e91e63']
+  const colorBySection = useMemo(() => ['#00ffff', '#e91e63'], [])
   const rightBarColor = colorBySection[active] || '#00ffff'
   const goTo = (ref) => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   /* Lottie: pause hors-écran + fallback local si erreur */
   const lottieRef = useRef(null)
   const remoteSrc = 'https://assets4.lottiefiles.com/packages/lf20_1pxqjqps.json'
-  const fallbackSrc = '/lotties/hero.json' // <-- place ce fichier
+  const fallbackSrc = '/lotties/hero.json'
   const [lottieSrc, setLottieSrc] = useState(remoteSrc)
   useEffect(() => {
     const el = lottieRef.current
@@ -155,30 +328,30 @@ export default function Home() {
     return () => { io.disconnect(); el.removeEventListener('error', onErr) }
   }, [lottieSrc])
 
-  /* Stagger des badges (section Skills) */
+  /* Stagger des badges */
   const containerVariants = { hidden: { opacity: 1 }, show: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.15 } } }
   const itemVariants = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 320, damping: 20 } } }
   const skills = ['React', 'TypeScript', 'Node.js', 'GraphQL', 'Flutter', 'React Native', 'PWA', 'Framer Motion', 'Chakra UI', 'MongoDB', 'PostgreSQL', 'Docker']
 
   return (
     <>
-      {/* Scroll snapping global */}
+      {/* Scroll snapping + marquee */}
       <Global styles={`
         html, body { scroll-snap-type: y proximity; }
         .snap-section { scroll-snap-align: start; }
+        @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
       `} />
 
-      {/* Loader + halo */}
       <IntroLoader />
       <CursorGlow />
 
-      {/* Progress bar globale (top) */}
+      {/* Progress bar top */}
       <MotionBox position="fixed" top="0" left="0" right="0" h="3px" zIndex="1000"
         style={{ scaleX, transformOrigin: '0% 50%' }}
         bgGradient="linear(to-r,#00ffff,#e91e63,#7C4DFF)"
       />
 
-      {/* Mini sommaire vertical cliquable (2 bullets) */}
+      {/* TOC vertical */}
       <Box position="fixed" right={{ base: 6, md: 14 }} top="14%" h="72vh" w="8px" zIndex={998}
            bg="rgba(255,255,255,0.12)" borderRadius="full" overflow="hidden">
         <MotionBox w="100%" h="100%"
@@ -199,9 +372,11 @@ export default function Home() {
 
       {/* =========== SECTION HERO =========== */}
       <Box position="relative" minH="100vh" overflow="hidden" ref={heroRef} className="snap-section">
+        {/* Layers */}
+        <Starfield density={1} />
         <AuroraOverlay />
-        {/* Grille néon subtile */}
-        <Box position="absolute" inset={0} zIndex={0} pointerEvents="none" opacity={0.25}
+        <NeonBeams />
+        <Box position="absolute" inset={0} zIndex={0} pointerEvents="none" opacity={0.18}
           sx={{
             backgroundImage: `
               linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
@@ -214,13 +389,15 @@ export default function Home() {
           }}
         />
 
+        <HoloFrame />
+
         <MotionBox
           position="relative" zIndex={1} minH="100vh"
           display="flex" flexDir="column" alignItems="center" justifyContent="center"
           px={{ base: 6, md: 8 }} pt="24" textAlign="center"
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, ease: 'easeOut' }}
-          style={{ rotateX, rotateY, transformStyle:'preserve-3d' }}
-          onMouseMove={onHeroMove}
+          style={!isMobile && !prefersReducedMotion ? { rotateX, rotateY, transformStyle:'preserve-3d' } : {}}
+          onMouseMove={!isMobile ? onHeroMove : undefined}
         >
           {/* Orbites + Lottie */}
           <Box position="relative" w={{ base: 220, md: 260 }} h={{ base: 220, md: 260 }} mb={2}>
@@ -247,7 +424,7 @@ export default function Home() {
                    bg="rgba(233,30,99,0.15)" border="1px solid rgba(233,30,99,0.35)">PWA</Tag>
             </Box>
 
-            {/* 🎞 Lottie centrale (pause hors écran + fallback) */}
+            {/* 🎞 Lottie centrale */}
             <Box
               as="lottie-player"
               ref={lottieRef}
@@ -287,7 +464,7 @@ export default function Home() {
                 'Expériences Web & Mobile immersives.',
                 'Intégrations API robustes & scalables.',
               ]}
-              typingSpeed={95} holdTime={1200} loop
+              typingSpeed={prefersReducedMotion ? 0 : 95} holdTime={1200} loop
             />
           </Text>
 
@@ -296,7 +473,7 @@ export default function Home() {
             as="a" href="/projects" size="lg" colorScheme="teal" rightIcon={<FaArrowRight />}
             whileHover={{ scale:1.06, boxShadow:'0 0 32px rgba(0,255,255,0.45), 0 0 60px rgba(233,30,99,0.25)' }}
             whileTap={{ scale:0.95 }}
-            onMouseMove={onBtnMove} onMouseLeave={onBtnLeave}
+            onMouseMove={!isMobile ? onBtnMove : undefined} onMouseLeave={onBtnLeave}
             onClick={(e) => confettiBurst(e.clientX, e.clientY)}
             style={{ x: bx, y: by }}
             position="relative" overflow="hidden"
@@ -316,14 +493,65 @@ export default function Home() {
             Voir mes projets
           </MotionButton>
 
-          {/* Chevron -> Skills */}
-          <Box as="button" position="absolute" bottom="6" color="whiteAlpha.700" fontSize="xl"
-               sx={{ animation:`${bounce} 1.6s ease-in-out infinite` }}
-               onClick={() => skillsRef.current?.scrollIntoView({ behavior:'smooth' })}
-               aria-label="Aller aux compétences">
-            <FaChevronDown />
-          </Box>
+          {/* Chevron -> Callouts (nouvelle section) */}
+          {!prefersReducedMotion && (
+            <Box as="button" position="absolute" bottom="6" color="whiteAlpha.700" fontSize="xl"
+                 sx={{ animation:`${bounce} 1.6s ease-in-out infinite` }}
+                 onClick={() => calloutsRef.current?.scrollIntoView({ behavior:'smooth' })}
+                 aria-label="Aller aux callouts">
+              <FaChevronDown />
+            </Box>
+          )}
         </MotionBox>
+      </Box>
+
+      {/* =========== SECTION CALLOUTS (3 Cartes 3D) =========== */}
+      <Box ref={calloutsRef} className="snap-section" position="relative" py={{ base: 12, md: 20 }}>
+        <Box position="absolute" inset={0} pointerEvents="none"
+             bg="linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.35))" />
+        <Box maxW="1100px" mx="auto" px={{ base: 6, md: 10 }}>
+          <Heading textAlign="center" mb={{ base: 8, md: 12 }}>
+            Pourquoi travailler avec moi ?
+          </Heading>
+
+          <Box
+            display="grid"
+            gridTemplateColumns={{ base: '1fr', md: 'repeat(3, 1fr)' }}
+            gap={{ base: 5, md: 6 }}
+          >
+            <CalloutCard
+              title="Performance"
+              desc="Rendu ultra-rapide (PWA, code-splitting, memoisation), budget perfs mesuré (Lighthouse/Web Vitals), images responsives."
+              accent="#00ffff"
+              icon={
+                <Box as="svg" viewBox="0 0 24 24" w="8" h="8" fill="none" stroke="currentColor" strokeWidth="1.5" color="#00ffff">
+                  <path d="M12 3v4M12 17v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M3 12h4M17 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                  <circle cx="12" cy="12" r="3" />
+                </Box>
+              }
+            />
+            <CalloutCard
+              title="Accessibilité"
+              desc="Composants accessibles (ARIA), contrastes AA/AAA, navigation clavier/lecteur d’écran, animations respectueuses (prefers-reduced-motion)."
+              accent="#7C4DFF"
+              icon={
+                <Box as="svg" viewBox="0 0 24 24" w="8" h="8" fill="none" stroke="currentColor" strokeWidth="1.5" color="#7C4DFF">
+                  <circle cx="12" cy="4" r="2"/><path d="M6 8h12l-3 4v8h-6v-8z"/>
+                </Box>
+              }
+            />
+            <CalloutCard
+              title="DevEx (DX)"
+              desc="TypeScript, CI/CD (GitHub Actions), tests, conventions, story-driven UI, tooling efficace pour livrer vite et bien."
+              accent="#e91e63"
+              icon={
+                <Box as="svg" viewBox="0 0 24 24" w="8" h="8" fill="none" stroke="currentColor" strokeWidth="1.5" color="#e91e63">
+                  <path d="M12 15l-3-3 3-3 3 3-3 3z"/><path d="M4 4h16v16H4z"/>
+                </Box>
+              }
+            />
+          </Box>
+        </Box>
       </Box>
 
       {/* =========== SECTION SKILLS (marquee) =========== */}
@@ -350,17 +578,14 @@ export default function Home() {
               ))}
             </HStack>
           </Box>
-          <style>
-            {`@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }`}
-          </style>
           <Text mt={6} color="whiteAlpha.800" maxW="820px" mx="auto">
-            Stack moderne orientée performance et DX : React/TS, animations Framer, Node/GraphQL,
+            Stack moderne orientée performance & DX : React/TS, animations Framer, Node/GraphQL,
             PWA offline-first, CI/CD Docker & GitHub Actions, bases PostgreSQL/MongoDB.
           </Text>
         </Box>
       </Box>
 
-      {/* === AVATAR “CAPSULE” FIXE (photo en bas à droite) === */}
+      {/* === AVATAR “CAPSULE” FIXE (photo en bas à droite) — réactivé === */}
       <MotionBox
         as="a" href="/about" title="À propos"
         position="fixed" bottom={{ base: 20, md: 28 }} right={{ base: 18, md: 28 }}
